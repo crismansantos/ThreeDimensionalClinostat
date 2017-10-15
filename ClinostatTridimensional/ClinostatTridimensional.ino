@@ -11,39 +11,38 @@
 #include <ThreadController.h>	
 #include <math.h>
 
-#pragma region Atributes
-Thread SerialReader;
-Thread SerialWriter;
-Thread SerialAlive;
-Thread DebugWriter;
+#pragma region Atributes   
+const byte MotorX1Port = 0x03;
+const byte MotorX2Port = 0x05;
 
-Thread SensorReader;
+const byte MotorY1Port = 0x03;
+const byte MotorY2Port = 0x05;
 
-Thread MotorWriter;
+const byte MotorZ1Port = 0x03;
+const byte MotorZ2Port = 0x05;
 
-ThreadController MotorManager;
-ThreadController SensorManager;
-ThreadController SerialManager;
-ThreadController TaskManager;
+const byte pwmMotorXPort = 0x06;
+const byte pwmMotorYPort = 0x06;
+const byte pwmMotorZPort = 0x06;
+
+const int MPUAddress = 0x68;
+
+double MotorXSetPoint = 0;
+double MotorXInput = 0;
+double MotorXOutput = 0; 
 
 double MotorYSetPoint = 0;
 double MotorYInput = 0;
 double MotorYOutput = 0;
 
-struct Weight {
-	double Kp;
-	double Ki;
-	double kd;
-}TuningsMotorY;
+double MotorZSetPoint = 0;
+double MotorZInput = 0;
+double MotorZOutput = 0;
 
-PID PIDMotorY(&MotorYInput, &MotorYOutput, &MotorYSetPoint, TuningsMotorY.Kp, TuningsMotorY.Ki, TuningsMotorY.kd, DIRECT);
+float RadiusSampleCircunference = 0.01f;
+double EarthGravitation = 9.80665f;
 
-const byte MotorY1Port = 0x03;
-const byte MotorY2Port = 0x05;
-const byte pwmMotorYPort = 0x06;
-
-const int MPUAddress = 0x68;
-byte SpeedY = 0;
+unsigned long TimerPID = 0;
 
 union Data16bits {
 	int16_t Value;
@@ -126,16 +125,104 @@ struct Vectors {
 struct PhysicsData {
 	Vectors Acceleration;
 	Vectors AngularSpeed;
-	double GravitationalAcceleration;
+	Vectors GravitationalAcceleration;
 	double ResultantRotation;
 	double CentripetalAcceleration;
 	double CentrifugalAcceleration;
 }PhysicsValues;
 
-float RadiusSampleCircunference = 0.01f;
-double EarthGravitation = 9.80665f;
-byte Speed = 0;
+struct MotorSpeed {
+	byte MotorX;
+	byte MotorY;
+	byte MotorZ;
+}Speed;
+
+struct Weight {
+	double Kp;
+	double Ki;
+	double kd;
+}TuningsMotorX, TuningsMotorY, TuningsMotorZ;
+
+struct ByteLimits {
+	byte Min;
+	byte Max;
+}MotorXSpeedLimits, MotorYSpeedLimits, MotorZSpeedLimits;
+
+enum MotorDirections {
+	FORWARD = 0,
+	BACKWARD = 1,
+	STOP = 2,
+	BREAK = 3
+};
+
+enum Motor {
+	MotorX = 0,
+	MotorY = 1,
+	MotorZ = 1
+};
+
+PID PIDMotorX(&MotorXInput, &MotorXOutput, &MotorXSetPoint, TuningsMotorX.Kp, TuningsMotorX.Ki, TuningsMotorX.kd, DIRECT);
+PID PIDMotorY(&MotorYInput, &MotorYOutput, &MotorYSetPoint, TuningsMotorY.Kp, TuningsMotorY.Ki, TuningsMotorY.kd, DIRECT);
+PID PIDMotorZ(&MotorZInput, &MotorZOutput, &MotorZSetPoint, TuningsMotorZ.Kp, TuningsMotorZ.Ki, TuningsMotorZ.kd, DIRECT);
+
+Thread SerialReader;
+Thread SerialWriter;
+Thread SerialAlive;
+Thread DebugWriter;
+
+Thread SensorReader;
+
+Thread MotorXWriter;
+Thread MotorYWriter;
+Thread MotorZWriter;
+
+ThreadController MotorManager;
+ThreadController SensorManager;
+ThreadController SerialManager;
+ThreadController TaskManager;
 #pragma endregion
+
+void MotorDirection(const byte Direction, const  byte PortA, const  byte PortB) {
+	switch (Direction) {
+	case 0: {
+		digitalWrite(PortA, HIGH);
+		digitalWrite(PortB, LOW);
+	}	break;
+	case 1: {
+		digitalWrite(PortA, LOW);
+		digitalWrite(PortB, HIGH);
+	}	break;
+	case 2: {
+		digitalWrite(PortA, LOW);
+		digitalWrite(PortB, LOW);
+	}	break;
+	case 3: {
+		digitalWrite(PortA, HIGH);
+		digitalWrite(PortB, HIGH);
+	}	break;
+	default:
+		break;
+	}
+}
+
+void MotorRun(const byte Motor, const  byte Direction) {
+	switch (Motor) {
+	case 0: {
+		MotorDirection(Direction, MotorX1Port, MotorX2Port);
+	}	break;
+	case 1: {
+		MotorDirection(Direction, MotorY1Port, MotorY2Port);
+	}	break;
+	case 2: {
+		MotorDirection(Direction, MotorZ1Port, MotorX2Port);
+	}	break;
+	case 3: {
+
+	}	break;
+	default:
+		break;
+	}
+}
 
 byte CalculeCheckSum(byte *PayLoad, byte PackageLenght) {
 	uData32bits CheckSum;
@@ -146,6 +233,50 @@ byte CalculeCheckSum(byte *PayLoad, byte PackageLenght) {
 		CheckSum.Value += PayLoad[i];
 
 	return (byte)CheckSum.ByteArray[0];
+}
+
+void DefinePIDLimits() {
+	MotorXSpeedLimits.Min = 0xA0;
+	MotorXSpeedLimits.Max = 0xFF;
+
+	MotorYSpeedLimits.Min = 0xA0;
+	MotorYSpeedLimits.Max = 0xFF;
+
+	MotorZSpeedLimits.Min = 0xA0;
+	MotorZSpeedLimits.Max = 0xFF;
+}
+
+void DefinePIDSetPoint() {
+	MotorXSetPoint = ConfigPackage.MinGravitationalAcceleration.Value;
+	MotorYSetPoint = ConfigPackage.MinGravitationalAcceleration.Value;
+	MotorZSetPoint = ConfigPackage.MinGravitationalAcceleration.Value;
+}
+
+void ConfigurePID() {
+	DefinePIDLimits();
+	DefinePIDSetPoint();
+
+	PIDMotorX.SetOutputLimits(MotorXSpeedLimits.Min, MotorXSpeedLimits.Max);
+	PIDMotorY.SetOutputLimits(MotorYSpeedLimits.Min, MotorYSpeedLimits.Max);
+	PIDMotorZ.SetOutputLimits(MotorZSpeedLimits.Min, MotorZSpeedLimits.Max);
+
+	PIDMotorX.SetMode(AUTOMATIC);
+	PIDMotorY.SetMode(AUTOMATIC);
+	PIDMotorZ.SetMode(AUTOMATIC);
+}
+
+void PIDCompute(int ElapsedTime) {
+	MotorXInput = PhysicsValues.GravitationalAcceleration.X;
+	PIDMotorX.SetSampleTime(ElapsedTime);
+	PIDMotorX.Compute();
+
+	MotorYInput = PhysicsValues.GravitationalAcceleration.Y;
+	PIDMotorY.SetSampleTime(ElapsedTime);
+	PIDMotorY.Compute();
+
+	MotorZInput = PhysicsValues.GravitationalAcceleration.Z;
+	PIDMotorZ.SetSampleTime(ElapsedTime);
+	PIDMotorZ.Compute();
 }
 
 void setCircunferenceRadius() {
@@ -165,7 +296,9 @@ void setCircunferenceRadius() {
 }
 
 #pragma region ThreadMethods 
-void SensorRead() {			 
+void SensorRead() {		
+	TimerPID = millis() - TimerPID;
+
 	Wire.beginTransmission(MPUAddress);
 	Wire.write(0x3B);
 	Wire.endTransmission(false);
@@ -204,11 +337,17 @@ void SensorRead() {
 
 	PhysicsValues.CentripetalAcceleration = (ConfigPackage.SampleMass * pow(PhysicsValues.AngularSpeed.Result, 2) * RadiusSampleCircunference);
 	PhysicsValues.CentrifugalAcceleration = (ConfigPackage.SampleMass * pow(PhysicsValues.AngularSpeed.Result, 2) * RadiusSampleCircunference);
-	PhysicsValues.GravitationalAcceleration = ((pow(PhysicsValues.AngularSpeed.Result, 2) * RadiusSampleCircunference) / EarthGravitation);
+
+	PhysicsValues.GravitationalAcceleration.X = ((pow(PhysicsValues.AngularSpeed.X, 2) * RadiusSampleCircunference) / EarthGravitation);
+	PhysicsValues.GravitationalAcceleration.Y = ((pow(PhysicsValues.AngularSpeed.Y, 2) * RadiusSampleCircunference) / EarthGravitation);
+	PhysicsValues.GravitationalAcceleration.Z = ((pow(PhysicsValues.AngularSpeed.Z, 2) * RadiusSampleCircunference) / EarthGravitation);
+	PhysicsValues.GravitationalAcceleration.Result = ((pow(PhysicsValues.AngularSpeed.Result, 2) * RadiusSampleCircunference) / EarthGravitation);
 																					
 	ExperimentPackage.CentripetalAcceleration.Value = lround(PhysicsValues.CentripetalAcceleration / ((2 * EarthGravitation) / 32768));
 	ExperimentPackage.CentrifugalAcceleration.Value = lround(PhysicsValues.CentrifugalAcceleration / ((2 * EarthGravitation) / 32768));	   
-	ExperimentPackage.GravitationalAcceleration.Value = lround(PhysicsValues.GravitationalAcceleration / ((2 * EarthGravitation) / 32768));
+	ExperimentPackage.GravitationalAcceleration.Value = lround(PhysicsValues.GravitationalAcceleration.Result / ((2 * EarthGravitation) / 32768));
+
+	PIDCompute((int)TimerPID);
 }
 			 
 void DebugWrite(){
@@ -265,12 +404,26 @@ void DebugWrite(){
 
 }
 
-void MotorWrite() {
-	SpeedY = random(0xB1, 0xBF);
-	analogWrite(pwmMotorYPort, SpeedY);
-	ExperimentPackage.RpmY = map(SpeedY, 0xB1, 0xFF, 0x00, 0xFF);
+void MotorXWrite() { 
+	Speed.MotorX = MotorXOutput;
+	analogWrite(pwmMotorXPort, Speed.MotorX);
+	ExperimentPackage.RpmX = map(Speed.MotorX, MotorXSpeedLimits.Min, MotorXSpeedLimits.Max, 0x00, 0xFF);
 
-	ExperimentPackage.ResultantRotation =  (byte)lround(sqrt(pow(0, 2) + pow(ExperimentPackage.RpmY, 2) + pow(0, 2)));
+	ExperimentPackage.ResultantRotation =  (byte)lround(sqrt(pow(0, 2) + pow(ExperimentPackage.RpmX, 2) + pow(0, 2)));
+}
+void MotorYWrite() {
+	Speed.MotorY = MotorYOutput;
+	analogWrite(pwmMotorYPort, Speed.MotorY);
+	ExperimentPackage.RpmY = map(Speed.MotorY, MotorYSpeedLimits.Min, MotorYSpeedLimits.Max, 0x00, 0xFF);
+
+	ExperimentPackage.ResultantRotation = (byte)lround(sqrt(pow(0, 2) + pow(ExperimentPackage.RpmY, 2) + pow(0, 2)));
+}
+void MotorZWrite() {
+	Speed.MotorZ = MotorZOutput;
+	analogWrite(pwmMotorZPort, Speed.MotorZ);
+	ExperimentPackage.RpmZ = map(Speed.MotorZ, MotorZSpeedLimits.Min, MotorZSpeedLimits.Max, 0x00, 0xFF);
+
+	ExperimentPackage.ResultantRotation = (byte)lround(sqrt(pow(0, 2) + pow(ExperimentPackage.RpmZ, 2) + pow(0, 2)));
 }
 
 void SerialRead() {					  
@@ -574,6 +727,8 @@ void SerialWake() {
 #pragma endregion
 
 void setup() {
+	ConfigurePID();
+
 	Serial.begin(9600);
 	ConfigPackage.SampleMass = 10;
 
@@ -609,8 +764,12 @@ void setup() {
 
 	PhysicsValues.CentrifugalAcceleration = 0;
 	PhysicsValues.CentripetalAcceleration = 0;
-	PhysicsValues.GravitationalAcceleration = 0;
 	PhysicsValues.ResultantRotation = 0;
+
+	PhysicsValues.GravitationalAcceleration.X = 0;
+	PhysicsValues.GravitationalAcceleration.Y = 0;
+	PhysicsValues.GravitationalAcceleration.Z = 0;
+	PhysicsValues.GravitationalAcceleration.Result = 0;
 							 
 	ExperimentPackage.ExperimentID.Value = 0;
 	ExperimentPackage.ExperimentTime.Value = 0;
@@ -657,15 +816,25 @@ void setup() {
 	SensorReader.setInterval(500);
 	SensorManager.onRun(SensorRead);
 
-	MotorWriter.enabled = true;
-	MotorWriter.setInterval(100);
-	MotorWriter.onRun(MotorWrite);
+	MotorXWriter.enabled = true;
+	MotorXWriter.setInterval(100);
+	MotorXWriter.onRun(MotorXWrite);
+
+	MotorXWriter.enabled = true;
+	MotorXWriter.setInterval(100);
+	MotorXWriter.onRun(MotorXWrite);
+
+	MotorYWriter.enabled = true;
+	MotorYWriter.setInterval(100);
+	MotorYWriter.onRun(MotorYWrite);
 
 	SensorManager.enabled = true;
 	SensorManager.add(&SensorReader);
 
 	MotorManager.enabled =true;
-	MotorManager.add(&MotorWriter);
+	MotorManager.add(&MotorXWriter);
+	MotorManager.add(&MotorYWriter);
+	MotorManager.add(&MotorZWriter);
 
 	SerialManager.enabled = true;
 	SerialManager.add(&SerialReader);
