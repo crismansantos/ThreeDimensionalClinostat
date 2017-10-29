@@ -1,5 +1,6 @@
-C:\Users\crisp\AppData\Local\Temp\VMBuilds\ClinostatTridimensional\uno\Debug\ClinostatTridimensional.cpp.o: \
- C:\Users\crisp\AppData\Local\Temp\VMBuilds\ClinostatTridimensional\uno\Debug\ClinostatTridimensional.cpp \
+C:\Users\crisp\AppData\Local\Temp\VMBuilds\ClinostatTridimensional\uno\Debug\DataProtocol.cpp.o: \
+ C:\Users\crisp\AppData\Local\Temp\VMBuilds\ClinostatTridimensional\uno\Debug\DataProtocol.cpp \
+ C:\Users\crisp\AppData\Local\Temp\VMBuilds\ClinostatTridimensional\uno\Debug\DataProtocol.h \
  C:\Program\ Files\ (x86)\Arduino\hardware\arduino\avr\cores\arduino/Arduino.h \
  C:\Program\ Files\ (x86)\Arduino\hardware\arduino\avr\cores\arduino/binary.h \
  C:\Program\ Files\ (x86)\Arduino\hardware\arduino\avr\cores\arduino/WCharacter.h \
@@ -11,7 +12,6 @@ C:\Users\crisp\AppData\Local\Temp\VMBuilds\ClinostatTridimensional\uno\Debug\Cli
  C:\Program\ Files\ (x86)\Arduino\hardware\arduino\avr\cores\arduino/USBAPI.h \
  C:\Program\ Files\ (x86)\Arduino\hardware\arduino\avr\cores\arduino/Arduino.h \
  C:\Program\ Files\ (x86)\Arduino\hardware\arduino\avr\variants\standard/pins_arduino.h \
- C:\Users\crisp\AppData\Local\Temp\VMBuilds\ClinostatTridimensional\uno\Debug\DataProtocol.h \
  D:\Users\Crisman\OneDrive\Documentos\Arduino\libraries\StandardCplusplus-master/StandardCplusplus.h \
  D:\Users\Crisman\OneDrive\Documentos\Arduino\libraries\StandardCplusplus-master/vector \
  D:\Users\Crisman\OneDrive\Documentos\Arduino\libraries\StandardCplusplus-master/basic_definitions \
@@ -31,11 +31,4 @@ C:\Users\crisp\AppData\Local\Temp\VMBuilds\ClinostatTridimensional\uno\Debug\Cli
  D:\Users\Crisman\OneDrive\Documentos\Arduino\libraries\StandardCplusplus-master/algorithm \
  D:\Users\Crisman\OneDrive\Documentos\Arduino\libraries\StandardCplusplus-master/functional \
  D:\Users\Crisman\OneDrive\Documentos\Arduino\libraries\StandardCplusplus-master/type_traits \
- D:\Users\Crisman\OneDrive\Documentos\Arduino\libraries\StandardCplusplus-master/initializer_list \
- D:\Users\Crisman\OneDrive\Documentos\Arduino\libraries\PID/PID_v1.h \
- D:\Users\Crisman\OneDrive\Documentos\Arduino\libraries\SoftwareSerial\src/SoftwareSerial.h \
- C:\Program\ Files\ (x86)\Arduino\hardware\arduino\avr\cores\arduino/Stream.h \
- C:\Program\ Files\ (x86)\Arduino\hardware\arduino\avr\libraries\Wire\src/Wire.h \
- D:\Users\Crisman\OneDrive\Documentos\Arduino\libraries\ArduinoThread-master/Thread.h \
- D:\Users\Crisman\OneDrive\Documentos\Arduino\libraries\ArduinoThread-master/ThreadController.h \
- D:\Users\Crisman\OneDrive\Documentos\Arduino\libraries\ArduinoThread-master/Thread.h
+ D:\Users\Crisman\OneDrive\Documentos\Arduino\libraries\StandardCplusplus-master/initializer_list

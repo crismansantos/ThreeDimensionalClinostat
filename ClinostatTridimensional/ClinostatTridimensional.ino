@@ -4,12 +4,14 @@
  Author:	CrismanSantos
 */
 
+#include "DataProtocol.h"
 #include <PID_v1.h>
 #include <SoftwareSerial.h>
 #include <Wire.h>
 #include <Thread.h>
 #include <ThreadController.h>	
 #include <math.h>
+
 
 #pragma region Atributes   
 const byte MotorX1Port = 0x03;
@@ -726,10 +728,13 @@ void SerialWake() {
 }	 
 #pragma endregion
 
+DataProtocol Protocol = DataProtocol(Serial);
+
 void setup() {
 	ConfigurePID();
 
 	Serial.begin(9600);
+
 	ConfigPackage.SampleMass = 10;
 
 	pinMode(MotorY1Port, 0x01);
@@ -849,7 +854,12 @@ void setup() {
 }
 
 void loop() {
-	if (TaskManager.shouldRun()) TaskManager.run();
+	//if (TaskManager.shouldRun()) TaskManager.run();
+
+	Protocol.SendData(Protocol.ControlCenterExperimentPackage);
+	Protocol.ReceiveConfigData();
+
+	delay(500);
 }
 
 
